@@ -62,18 +62,22 @@ public class NoteController {
     @DeleteMapping(path = "/delete", consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<String> deleteNote(@Valid @RequestBody NoteDto noteDto,
-                                             BindingResult result,
                                              @RequestHeader("Authorization") String tokenHeader){
-        if(result.hasErrors()) {
-            try{
-                return new ResponseEntity<>(objectMapper.writeValueAsString(result.getAllErrors()),
-                        HttpStatus.BAD_REQUEST);
-            }catch (JsonProcessingException e) {
-                System.out.println(e);
+
+
+        Note note = noteRepository.findById(noteDto.getId()).orElse(null);
+        if (note == null) {
+            return new ResponseEntity<>("note not found", HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+
+        User user = userService.getUserByTokenHeader(tokenHeader);
+        if(!user.getId().equals(note.getNoteUser().getId())) {
+            if(!note.getNoteUser().getId().equals(user.getId())) {
+                return new ResponseEntity<>("note not accessible for user", HttpStatus.UNAUTHORIZED);
             }
         }
 
-        noteRepository.deleteById(noteDto.getId());
+        noteRepository.delete(note);
 
         return new ResponseEntity<>("note deleted", HttpStatus.OK);
     }
